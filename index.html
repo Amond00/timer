@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>번쩍 타이머</title>
+<style>
+  :root{--bg:#12141a;--text:#eef0f5;--muted:#8b8f9a;--accent:#ffce45;}
+  *{box-sizing:border-box;}
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--text);font-family:"Pretendard","Malgun Gothic",sans-serif;transition:background 0.08s ease;}
+  .card{width:340px;padding:32px 28px;text-align:center;}
+  h1{font-size:18px;font-weight:600;margin:0 0 16px;letter-spacing:0.02em;}
+  .clock{font-size:44px;font-weight:700;letter-spacing:0.03em;margin-bottom:16px;font-variant-numeric:tabular-nums;}
+  .status{font-size:13px;color:var(--muted);margin-bottom:16px;min-height:32px;}
+  .row{display:flex;gap:8px;justify-content:center;margin-bottom:16px;}
+  .field{display:flex;flex-direction:column;gap:4px;flex:1;}
+  .field label{font-size:11px;color:var(--muted);}
+  input[type=number]{width:100%;padding:8px;border-radius:8px;border:1px solid #2c303a;background:#1a1d24;color:var(--text);font-size:15px;text-align:center;}
+  input[type=color]{width:100%;height:38px;padding:2px;border-radius:8px;border:1px solid #2c303a;background:#1a1d24;cursor:pointer;}
+  input[type=file]{width:100%;font-size:12px;color:var(--muted);}
+  input[type=text]{width:100%;padding:8px;border-radius:8px;border:1px solid #2c303a;background:#1a1d24;color:var(--text);font-size:13px;}
+  input[type=range]{-webkit-appearance:none;height:4px;border-radius:2px;background:#2c303a;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer;}
+  input:focus{outline:none;border-color:var(--accent);}
+  .fileRow{margin-bottom:16px;}
+  .fileName{font-size:11px;color:var(--muted);margin-top:6px;word-break:break-all;}
+  button{width:100%;padding:12px;border-radius:8px;border:none;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:8px;}
+  #startBtn{background:var(--accent);color:#12141a;}
+  #stopBtn{background:#22252d;color:var(--text);}
+  #saveBtn{background:#2a3b4d;color:var(--text);}
+  #stopBtn:disabled, #startBtn:disabled{opacity:0.4;cursor:not-allowed;}
+  .divider{height:1px;background:#2c303a;margin:18px 0;}
+  #urlToggleBtn{background:#22252d;color:var(--muted);font-size:13px;margin-bottom:4px;padding:9px 12px;}
+  #urlToggleBtn:hover{color:var(--text);}
+  #urlListWrap{text-align:left;margin-bottom:4px;}
+  .url-item{display:flex;align-items:center;gap:6px;padding:5px 8px;background:#1a1d24;border-radius:6px;margin-bottom:4px;}
+  .url-text{flex:1;font-size:11px;color:var(--accent);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .url-text:hover{text-decoration:underline;}
+  .url-del{width:auto;padding:1px 8px;background:#3a2020;color:#ff6b6b;font-size:15px;font-weight:700;border-radius:4px;margin:0;line-height:1.4;}
+  .url-del:hover{background:#5a2020;}
+  .url-empty{color:var(--muted);font-size:12px;padding:6px 2px;}
+  .bm-section{margin-top:4px;text-align:center;}
+  .bm-label{font-size:12px;color:var(--muted);margin-bottom:10px;}
+  .bm-btn{display:block;padding:10px 20px;background:#2c303a;color:var(--accent);border-radius:8px;text-decoration:none;font-size:13px;font-weight:600;cursor:grab;border:1px dashed #4a4f5c;}
+  .bm-btn:hover{background:#383d48;}
+  .bm-hint{font-size:10px;color:var(--muted);margin-top:8px;line-height:1.6;}
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>주기 번쩍임 타이머</h1>
+    <div class="clock" id="countdown">00:00</div>
+    <div class="status" id="status">설정 후 시작을 눌러주세요</div>
+
+    <div class="row">
+      <div class="field"><label>주기(분)</label><input type="number" id="minutes" min="0" value="1"></div>
+      <div class="field"><label>주기(초)</label><input type="number" id="seconds" min="0" max="59" value="45"></div>
+    </div>
+
+    <div class="row">
+      <div class="field"><label>번쩍이는 길이(초)</label><input type="number" id="flashLen" min="0.1" step="0.1" value="3"></div>
+      <div class="field"><label>번쩍임 색상</label><input type="color" id="flashColor" value="#a1b5dd"></div>
+    </div>
+
+    <div class="row fileRow">
+      <div class="field">
+        <label>재생할 노래 파일</label>
+        <input type="file" id="audioFile" accept="audio/*">
+        <div class="fileName" id="fileName">선택된 파일 없음</div>
+      </div>
+      <div class="field" style="max-width:100px;">
+        <label>재생 길이(초)</label>
+        <input type="number" id="playLen" min="0" step="0.5" value="4">
+      </div>
+    </div>
+
+    <div class="row fileRow">
+      <div class="field">
+        <label>노래 주소(URL)</label>
+        <input type="text" id="audioUrl" placeholder="https://... .mp3" value="https://static.wikitide.net/bluearchivewiki/transcoded/6/6e/Nagisa_(Swimsuit)_Title.ogg/Nagisa_(Swimsuit)_Title.ogg.mp3">
+      </div>
+    </div>
+    <button id="loadUrlBtn" style="background:#22252d;color:var(--text);margin-bottom:16px;">URL에서 불러오기</button>
+
+    <div class="row" style="margin-bottom:20px;">
+      <div class="field">
+        <label>음악 소리 크기 <span id="volLabel">80%</span></label>
+        <input type="range" id="volume" min="0" max="100" value="80" style="width:100%;">
+      </div>
+    </div>
+
+    <button id="saveBtn">설정 저장</button>
+    <button id="urlToggleBtn">저장된 주소 목록 ▼</button>
+    <div id="urlListWrap" style="display:none;">
+      <div id="urlList"></div>
+    </div>
+    <div class="divider"></div>
+    <button id="startBtn">시작</button>
+    <button id="stopBtn" disabled>중지</button>
+
+    <div class="divider"></div>
+    <div class="bm-section">
+      <div class="bm-label">스트리밍 사이트 여백 연동</div>
+      <a id="bmLink" href="" class="bm-btn">⚡ 번쩍 연동 북마크릿</a>
+      <a id="bmStopLink" href="" class="bm-btn" style="background:#3a2020;color:#ff6b6b;border-color:#6a3030;margin-top:8px;">■ 번쩍 중지 북마크릿</a>
+      <div class="bm-hint">
+        설정 완료 후 위 버튼들을 북마크바로 드래그.<br>
+        번쩍 시작: 스트리밍 탭에서 ⚡ 클릭.<br>
+        번쩍 중지: 스트리밍 탭에서 ■ 클릭.<br>
+        설정 바꾸면 ⚡ 다시 드래그 필요.
+      </div>
+    </div>
+  </div>
+
+<script>
+  const minutesInput = document.getElementById('minutes');
+  const secondsInput = document.getElementById('seconds');
+  const flashLenInput = document.getElementById('flashLen');
+  const flashColorInput = document.getElementById('flashColor');
+  const audioFileInput = document.getElementById('audioFile');
+  const playLenInput = document.getElementById('playLen');
+  const fileNameEl = document.getElementById('fileName');
+  const audioUrlInput = document.getElementById('audioUrl');
+  const loadUrlBtn = document.getElementById('loadUrlBtn');
+  const volumeInput = document.getElementById('volume');
+  const volLabel = document.getElementById('volLabel');
+  const saveBtn = document.getElementById('saveBtn');
+  const startBtn = document.getElementById('startBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const countdownEl = document.getElementById('countdown');
+  const statusEl = document.getElementById('status');
+
+  let intervalMs = 0, flashMs = 0, playLenMs = 0;
+  let flashTimeoutHandle = null, audioTimeoutHandle = null, remainingMs = 0;
+  let nextFlashEpoch = 0, running = false;
+
+  const tickWorker = new Worker(URL.createObjectURL(new Blob(
+    ['let h;onmessage=e=>{if(e.data==="start"){clearInterval(h);h=setInterval(()=>postMessage(0),200);}else{clearInterval(h);}}'],
+    {type:'text/javascript'}
+  )));
+  let audioObjectUrl = null;
+  let audioEl = new Audio();
+  let pendingAudioFile = null;
+
+  // ---------- 북마크릿 (현재 설정을 코드에 직접 박아넣음) ----------
+  function updateBookmarklet(){
+    const mins = parseFloat(minutesInput.value) || 0;
+    const secs = parseFloat(secondsInput.value) || 0;
+    const flashSec = parseFloat(flashLenInput.value) || 0.6;
+    const color = flashColorInput.value;
+    const iv = Math.round((mins * 60 + secs) * 1000);
+    const fd = Math.round(flashSec * 1000);
+    if(iv <= 0) return;
+    const code = `(function(){clearInterval(window.__ft);clearTimeout(window.__ft_t);function f(){document.body.style.backgroundColor='${color}';clearTimeout(window.__ft_t);window.__ft_t=setTimeout(function(){document.body.style.backgroundColor='';},${fd});}f();window.__ft=setInterval(f,${iv});})();`;
+    const stopCode = `(function(){clearInterval(window.__ft);window.__ft=null;clearTimeout(window.__ft_t);window.__ft_t=null;document.body.style.backgroundColor='';})();`;
+    document.getElementById('bmLink').href = 'javascript:' + code;
+    document.getElementById('bmStopLink').href = 'javascript:' + stopCode;
+  }
+  [minutesInput, secondsInput, flashLenInput, flashColorInput].forEach(el=>{
+    el.addEventListener('input', updateBookmarklet);
+    el.addEventListener('change', updateBookmarklet);
+  });
+  updateBookmarklet();
+
+  // ---------- IndexedDB ----------
+  function openDB(){
+    return new Promise((resolve, reject)=>{
+      const req = indexedDB.open('flashTimerDB', 1);
+      req.onupgradeneeded = ()=> req.result.createObjectStore('audio');
+      req.onsuccess = ()=> resolve(req.result);
+      req.onerror = ()=> reject(req.error);
+    });
+  }
+
+  async function saveAudioToDB(file){
+    const db = await openDB();
+    return new Promise((resolve, reject)=>{
+      const tx = db.transaction('audio', 'readwrite');
+      tx.objectStore('audio').put({ blob: file, name: file.name }, 'current');
+      tx.oncomplete = ()=> resolve();
+      tx.onerror = ()=> reject(tx.error);
+    });
+  }
+
+  async function loadAudioFromDB(){
+    const db = await openDB();
+    return new Promise((resolve, reject)=>{
+      const tx = db.transaction('audio', 'readonly');
+      const req = tx.objectStore('audio').get('current');
+      req.onsuccess = ()=> resolve(req.result || null);
+      req.onerror = ()=> reject(req.error);
+    });
+  }
+
+  function applyAudioBlob(blob, name){
+    if(audioObjectUrl) URL.revokeObjectURL(audioObjectUrl);
+    audioObjectUrl = URL.createObjectURL(blob);
+    audioEl.src = audioObjectUrl;
+    fileNameEl.textContent = '저장된 파일: ' + name;
+  }
+
+  function applyAudioUrl(url){
+    if(audioObjectUrl){ URL.revokeObjectURL(audioObjectUrl); audioObjectUrl = null; }
+    audioEl.src = url;
+    fileNameEl.textContent = 'URL로 불러옴: ' + url;
+  }
+
+  loadUrlBtn.addEventListener('click', ()=>{
+    const url = audioUrlInput.value.trim();
+    if(!url){ statusEl.textContent = '주소를 입력해주세요'; return; }
+    applyAudioUrl(url);
+    audioEl.play().then(()=>{ audioEl.pause(); audioEl.currentTime = 0; }).catch(()=>{
+      statusEl.textContent = '해당 주소에서 재생을 불러오지 못했습니다 (사이트 차단 가능)';
+    });
+  });
+
+  volumeInput.addEventListener('input', ()=>{
+    audioEl.volume = volumeInput.value / 100;
+    volLabel.textContent = volumeInput.value + '%';
+  });
+  audioEl.volume = volumeInput.value / 100;
+
+  // ---------- URL 저장 목록 ----------
+  function loadUrlList(){ try{ return JSON.parse(localStorage.getItem('flashTimerUrls')||'[]'); }catch(e){ return []; } }
+  function saveUrlList(list){ localStorage.setItem('flashTimerUrls', JSON.stringify(list)); }
+
+  function renderUrlList(){
+    const list = loadUrlList();
+    const listEl = document.getElementById('urlList');
+    listEl.innerHTML = '';
+    if(list.length === 0){
+      listEl.innerHTML = '<div class="url-empty">저장된 주소가 없습니다</div>';
+      return;
+    }
+    list.forEach((url, i)=>{
+      const item = document.createElement('div');
+      item.className = 'url-item';
+      const span = document.createElement('span');
+      span.className = 'url-text';
+      span.textContent = url;
+      span.title = url;
+      span.addEventListener('click', ()=>{
+        audioUrlInput.value = url;
+        applyAudioUrl(url);
+      });
+      const del = document.createElement('button');
+      del.className = 'url-del';
+      del.textContent = '×';
+      del.addEventListener('click', ()=>{
+        const updated = loadUrlList().filter((_,idx)=>idx!==i);
+        saveUrlList(updated);
+        renderUrlList();
+      });
+      item.appendChild(span);
+      item.appendChild(del);
+      listEl.appendChild(item);
+    });
+  }
+
+  function addUrlToList(url){
+    if(!url) return;
+    const list = loadUrlList();
+    if(list.includes(url)) return;
+    list.unshift(url);
+    saveUrlList(list);
+    renderUrlList();
+  }
+
+  let urlListOpen = false;
+  document.getElementById('urlToggleBtn').addEventListener('click', ()=>{
+    urlListOpen = !urlListOpen;
+    document.getElementById('urlListWrap').style.display = urlListOpen ? 'block' : 'none';
+    document.getElementById('urlToggleBtn').textContent = urlListOpen ? '저장된 주소 목록 ▲' : '저장된 주소 목록 ▼';
+  });
+
+  // ---------- 설정 저장 / 불러오기 ----------
+  function saveSettings(){
+    const settings = {
+      minutes: minutesInput.value,
+      seconds: secondsInput.value,
+      flashLen: flashLenInput.value,
+      flashColor: flashColorInput.value,
+      playLen: playLenInput.value,
+      audioUrl: audioUrlInput.value,
+      volume: volumeInput.value
+    };
+    localStorage.setItem('flashTimerSettings', JSON.stringify(settings));
+  }
+
+  function loadSettings(){
+    const raw = localStorage.getItem('flashTimerSettings');
+    if(!raw) return;
+    try{
+      const s = JSON.parse(raw);
+      if(s.minutes !== undefined) minutesInput.value = s.minutes;
+      if(s.seconds !== undefined) secondsInput.value = s.seconds;
+      if(s.flashLen !== undefined) flashLenInput.value = s.flashLen;
+      if(s.flashColor !== undefined) flashColorInput.value = s.flashColor;
+      if(s.playLen !== undefined) playLenInput.value = s.playLen;
+      if(s.audioUrl !== undefined) audioUrlInput.value = s.audioUrl;
+      if(s.volume !== undefined){
+        volumeInput.value = s.volume;
+        volLabel.textContent = s.volume + '%';
+        audioEl.volume = s.volume / 100;
+      }
+    }catch(e){}
+  }
+
+  saveBtn.addEventListener('click', async ()=>{
+    saveSettings();
+    if(pendingAudioFile){
+      await saveAudioToDB(pendingAudioFile);
+      applyAudioBlob(pendingAudioFile, pendingAudioFile.name);
+      pendingAudioFile = null;
+    } else if(audioUrlInput.value.trim() && !audioObjectUrl){
+      applyAudioUrl(audioUrlInput.value.trim());
+    }
+    const urlToSave = audioUrlInput.value.trim();
+    if(urlToSave) addUrlToList(urlToSave);
+    statusEl.textContent = '설정이 저장되었습니다';
+  });
+
+  audioFileInput.addEventListener('change', ()=>{
+    const file = audioFileInput.files[0];
+    if(!file) return;
+    pendingAudioFile = file;
+    fileNameEl.textContent = '선택됨(저장 버튼을 눌러야 기억됩니다): ' + file.name;
+  });
+
+  // ---------- 타이머 로직 ----------
+  function formatTime(ms){
+    const total = Math.max(0, Math.ceil(ms/1000));
+    const m = String(Math.floor(total/60)).padStart(2,'0');
+    const s = String(total%60).padStart(2,'0');
+    return m+':'+s;
+  }
+
+  function doFlash(){
+    const color = flashColorInput.value;
+    document.body.style.background = color;
+    flashTimeoutHandle = setTimeout(()=>{
+      document.body.style.background = '';
+    }, flashMs);
+
+    if(audioEl.src){
+      audioEl.currentTime = 0;
+      audioEl.play().catch(()=>{});
+      if(playLenMs > 0){
+        clearTimeout(audioTimeoutHandle);
+        audioTimeoutHandle = setTimeout(()=>{
+          audioEl.pause();
+          audioEl.currentTime = 0;
+        }, playLenMs);
+      }
+    }
+  }
+
+  function tick(){
+    const now = Date.now();
+    remainingMs = nextFlashEpoch - now;
+    if(remainingMs <= 0){
+      doFlash();
+      while(nextFlashEpoch <= now) nextFlashEpoch += intervalMs;
+      remainingMs = nextFlashEpoch - now;
+    }
+    countdownEl.textContent = formatTime(remainingMs);
+  }
+
+  tickWorker.onmessage = tick;
+
+  document.addEventListener('visibilitychange', ()=>{
+    if(!document.hidden && running){
+      const now = Date.now();
+      if(nextFlashEpoch - now <= 0){
+        doFlash();
+        while(nextFlashEpoch <= now) nextFlashEpoch += intervalMs;
+      }
+      countdownEl.textContent = formatTime(nextFlashEpoch - now);
+    }
+  });
+
+  startBtn.addEventListener('click', ()=>{
+    const mins = parseFloat(minutesInput.value) || 0;
+    const secs = parseFloat(secondsInput.value) || 0;
+    const flashSec = parseFloat(flashLenInput.value) || 0.5;
+    const playSec = parseFloat(playLenInput.value) || 0;
+
+    intervalMs = (mins*60 + secs) * 1000;
+    flashMs = flashSec * 1000;
+    playLenMs = playSec * 1000;
+
+    if(intervalMs <= 0){
+      statusEl.textContent = '주기를 0보다 크게 설정하세요';
+      return;
+    }
+
+    nextFlashEpoch = Date.now() + intervalMs;
+    remainingMs = intervalMs;
+    countdownEl.textContent = formatTime(remainingMs);
+    statusEl.textContent = '실행 중 — ' + mins + '분 ' + secs + '초마다 번쩍임';
+
+    [minutesInput, secondsInput, flashLenInput, flashColorInput, playLenInput, audioFileInput, audioUrlInput, loadUrlBtn].forEach(el=> el.disabled = true);
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+
+    running = true;
+    tickWorker.postMessage('start');
+  });
+
+  stopBtn.addEventListener('click', ()=>{
+    tickWorker.postMessage('stop');
+    running = false;
+    clearTimeout(flashTimeoutHandle);
+    clearTimeout(audioTimeoutHandle);
+    document.body.style.background = '';
+    audioEl.pause();
+    audioEl.currentTime = 0;
+
+    [minutesInput, secondsInput, flashLenInput, flashColorInput, playLenInput, audioFileInput, audioUrlInput, loadUrlBtn].forEach(el=> el.disabled = false);
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+
+    countdownEl.textContent = '00:00';
+    statusEl.textContent = '중지됨';
+  });
+
+  // ---------- 페이지 로드시 복원 ----------
+  const DEFAULT_URLS = [
+    'https://cdn.discordapp.com/attachments/354209999658024964/1523703081848537098/adf139f7715474dc.wav?ex=6a4d1293&is=6a4bc113&hm=543afdaafb509efc3a01f35b75d9afdc36e96175d59139a5aa54cc9db12b0fd7&',
+    'https://cdn.discordapp.com/attachments/354209999658024964/1523703082402451646/8c30a74023a17493.mp3?ex=6a4d1293&is=6a4bc113&hm=94823ca8b89d946473349d6a30059982f9a8a48d90061518465aee99e65a6314&'
+  ];
+
+  (async function init(){
+    loadSettings();
+    const list = loadUrlList();
+    let changed = false;
+    DEFAULT_URLS.forEach(url => { if(!list.includes(url)){ list.push(url); changed = true; } });
+    if(changed) saveUrlList(list);
+    renderUrlList();
+    updateBookmarklet();
+    try{
+      const saved = await loadAudioFromDB();
+      if(saved && saved.blob){
+        applyAudioBlob(saved.blob, saved.name);
+      } else if(audioUrlInput.value.trim()){
+        applyAudioUrl(audioUrlInput.value.trim());
+      }
+    }catch(e){}
+  })();
+</script>
+</body>
+</html>
