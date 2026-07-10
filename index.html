@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>번쩍 타이머</title>
+<title>주기타이머</title>
 <style>
   :root{--bg:#12141a;--text:#eef0f5;--muted:#8b8f9a;--accent:#ffce45;}
   *{box-sizing:border-box;}
@@ -25,9 +25,8 @@
   .fileName{font-size:11px;color:var(--muted);margin-top:6px;word-break:break-all;}
   button{width:100%;padding:12px;border-radius:8px;border:none;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:8px;}
   #startBtn{background:var(--accent);color:#12141a;}
-  #stopBtn{background:#22252d;color:var(--text);}
+  #startBtn.running{background:#22252d;color:var(--text);}
   #saveBtn{background:#2a3b4d;color:var(--text);}
-  #stopBtn:disabled, #startBtn:disabled{opacity:0.4;cursor:not-allowed;}
   .divider{height:1px;background:#2c303a;margin:18px 0;}
   #urlToggleBtn{background:#22252d;color:var(--muted);font-size:13px;margin-bottom:4px;padding:9px 12px;}
   #urlToggleBtn:hover{color:var(--text);}
@@ -47,7 +46,7 @@
 </head>
 <body>
   <div class="card">
-    <h1>주기 번쩍임 타이머</h1>
+    <h1>주기타이머</h1>
     <div class="clock" id="countdown">00:00</div>
     <div class="status" id="status">설정 후 시작을 눌러주세요</div>
 
@@ -57,8 +56,8 @@
     </div>
 
     <div class="row">
-      <div class="field"><label>번쩍이는 길이(초)</label><input type="number" id="flashLen" min="0.1" step="0.1" value="3"></div>
-      <div class="field"><label>번쩍임 색상</label><input type="color" id="flashColor" value="#a1b5dd"></div>
+      <div class="field"><label>점멸 길이(초)</label><input type="number" id="flashLen" min="0.1" step="0.1" value="3"></div>
+      <div class="field"><label>점멸 색상</label><input type="color" id="flashColor" value="#a1b5dd"></div>
     </div>
 
     <div class="row fileRow">
@@ -95,17 +94,16 @@
     </div>
     <div class="divider"></div>
     <button id="startBtn">시작</button>
-    <button id="stopBtn" disabled>중지</button>
 
     <div class="divider"></div>
     <div class="bm-section">
       <div class="bm-label">스트리밍 사이트 여백 연동</div>
-      <a id="bmLink" href="" class="bm-btn">⚡ 번쩍 연동 북마크릿</a>
-      <a id="bmStopLink" href="" class="bm-btn" style="background:#3a2020;color:#ff6b6b;border-color:#6a3030;margin-top:8px;">■ 번쩍 중지 북마크릿</a>
+      <a id="bmLink" href="" class="bm-btn">⚡ 연동 북마크릿</a>
+      <a id="bmStopLink" href="" class="bm-btn" style="background:#3a2020;color:#ff6b6b;border-color:#6a3030;margin-top:8px;">■ 중지 북마크릿</a>
       <div class="bm-hint">
         설정 완료 후 위 버튼들을 북마크바로 드래그.<br>
-        번쩍 시작: 스트리밍 탭에서 ⚡ 클릭.<br>
-        번쩍 중지: 스트리밍 탭에서 ■ 클릭.<br>
+        타이머 시작: 스트리밍 탭에서 ⚡ 클릭.<br>
+        타이머 중지: 스트리밍 탭에서 ■ 클릭.<br>
         설정 바꾸면 ⚡ 다시 드래그 필요.
       </div>
     </div>
@@ -125,7 +123,6 @@
   const volLabel = document.getElementById('volLabel');
   const saveBtn = document.getElementById('saveBtn');
   const startBtn = document.getElementById('startBtn');
-  const stopBtn = document.getElementById('stopBtn');
   const countdownEl = document.getElementById('countdown');
   const statusEl = document.getElementById('status');
 
@@ -379,48 +376,48 @@
   });
 
   startBtn.addEventListener('click', ()=>{
-    const mins = parseFloat(minutesInput.value) || 0;
-    const secs = parseFloat(secondsInput.value) || 0;
-    const flashSec = parseFloat(flashLenInput.value) || 0.5;
-    const playSec = parseFloat(playLenInput.value) || 0;
+    if(running){
+      tickWorker.postMessage('stop');
+      running = false;
+      clearTimeout(flashTimeoutHandle);
+      clearTimeout(audioTimeoutHandle);
+      document.body.style.background = '';
+      audioEl.pause();
+      audioEl.currentTime = 0;
 
-    intervalMs = (mins*60 + secs) * 1000;
-    flashMs = flashSec * 1000;
-    playLenMs = playSec * 1000;
+      [minutesInput, secondsInput, flashLenInput, flashColorInput, playLenInput, audioFileInput, audioUrlInput, loadUrlBtn].forEach(el=> el.disabled = false);
+      startBtn.textContent = '시작';
+      startBtn.classList.remove('running');
 
-    if(intervalMs <= 0){
-      statusEl.textContent = '주기를 0보다 크게 설정하세요';
-      return;
+      countdownEl.textContent = '00:00';
+      statusEl.textContent = '중지됨';
+    } else {
+      const mins = parseFloat(minutesInput.value) || 0;
+      const secs = parseFloat(secondsInput.value) || 0;
+      const flashSec = parseFloat(flashLenInput.value) || 0.5;
+      const playSec = parseFloat(playLenInput.value) || 0;
+
+      intervalMs = (mins*60 + secs) * 1000;
+      flashMs = flashSec * 1000;
+      playLenMs = playSec * 1000;
+
+      if(intervalMs <= 0){
+        statusEl.textContent = '주기를 0보다 크게 설정하세요';
+        return;
+      }
+
+      nextFlashEpoch = Date.now() + intervalMs;
+      remainingMs = intervalMs;
+      countdownEl.textContent = formatTime(remainingMs);
+      statusEl.textContent = '실행 중 — ' + mins + '분 ' + secs + '초마다 점멸';
+
+      [minutesInput, secondsInput, flashLenInput, flashColorInput, playLenInput, audioFileInput, audioUrlInput, loadUrlBtn].forEach(el=> el.disabled = true);
+      startBtn.textContent = '중지';
+      startBtn.classList.add('running');
+
+      running = true;
+      tickWorker.postMessage('start');
     }
-
-    nextFlashEpoch = Date.now() + intervalMs;
-    remainingMs = intervalMs;
-    countdownEl.textContent = formatTime(remainingMs);
-    statusEl.textContent = '실행 중 — ' + mins + '분 ' + secs + '초마다 번쩍임';
-
-    [minutesInput, secondsInput, flashLenInput, flashColorInput, playLenInput, audioFileInput, audioUrlInput, loadUrlBtn].forEach(el=> el.disabled = true);
-    startBtn.disabled = true;
-    stopBtn.disabled = false;
-
-    running = true;
-    tickWorker.postMessage('start');
-  });
-
-  stopBtn.addEventListener('click', ()=>{
-    tickWorker.postMessage('stop');
-    running = false;
-    clearTimeout(flashTimeoutHandle);
-    clearTimeout(audioTimeoutHandle);
-    document.body.style.background = '';
-    audioEl.pause();
-    audioEl.currentTime = 0;
-
-    [minutesInput, secondsInput, flashLenInput, flashColorInput, playLenInput, audioFileInput, audioUrlInput, loadUrlBtn].forEach(el=> el.disabled = false);
-    startBtn.disabled = false;
-    stopBtn.disabled = true;
-
-    countdownEl.textContent = '00:00';
-    statusEl.textContent = '중지됨';
   });
 
   // ---------- 페이지 로드시 복원 ----------
