@@ -75,15 +75,15 @@
     <div class="row fileRow">
       <div class="field">
         <label>알람 주소(URL)</label>
-        <input type="text" id="audioUrl" placeholder="https://... .mp3" value="https://static.wikitide.net/bluearchivewiki/transcoded/6/6e/Nagisa_(Swimsuit)_Title.ogg/Nagisa_(Swimsuit)_Title.ogg.mp3">
+        <input type="text" id="audioUrl" placeholder="https://... .mp3" value="audio/Nagisa_(Swimsuit)_Title.ogg.mp3">
       </div>
     </div>
     <button id="loadUrlBtn" style="background:#22252d;color:var(--text);margin-bottom:16px;">URL에서 불러오기</button>
 
     <div class="row" style="margin-bottom:20px;">
       <div class="field">
-        <label>음악 소리 크기 <span id="volLabel">80%</span></label>
-        <input type="range" id="volume" min="0" max="100" value="80" style="width:100%;">
+        <label>음악 소리 크기 <span id="volLabel">50%</span></label>
+        <input type="range" id="volume" min="0" max="100" value="50" style="width:100%;">
       </div>
     </div>
 
@@ -97,15 +97,15 @@
 
     <div class="divider"></div>
     <div class="bm-section">
-      <div class="bm-label">스트리밍 사이트 여백 연동</div>
-      <a id="bmLink" href="" class="bm-btn">⚡ 연동 북마크릿</a>
-      <a id="bmStopLink" href="" class="bm-btn" style="background:#3a2020;color:#ff6b6b;border-color:#6a3030;margin-top:8px;">■ 중지 북마크릿</a>
-      <div class="bm-hint">
-        설정 완료 후 위 버튼들을 북마크바로 드래그.<br>
-        타이머 시작: 스트리밍 탭에서 ⚡ 클릭.<br>
-        타이머 중지: 스트리밍 탭에서 ■ 클릭.<br>
-        설정 바꾸면 ⚡ 다시 드래그 필요.
+      <div class="bm-label">외부 연동</div>
+      <div class="bm-hint" style="margin-bottom:12px;">북마크바로 드래그 후 스트리밍 탭에서 클릭 → 시작/중지 토글. 설정 바꾸면 다시 드래그 필요.</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">외부 점멸</div>
+      <a id="bmLink" href="" class="bm-btn" style="margin-bottom:14px;">⚡ 외부 점멸</a>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">외부 영상 멈춤</div>
+      <div class="row" style="margin-bottom:8px;">
+        <div class="field"><label>일시중지(초)</label><input type="number" id="pauseLen" min="0" step="0.5" value="5"></div>
       </div>
+      <a id="bmVideoLink" href="" class="bm-btn">⏸ 외부 영상 멈춤</a>
     </div>
   </div>
 
@@ -123,6 +123,7 @@
   const volLabel = document.getElementById('volLabel');
   const saveBtn = document.getElementById('saveBtn');
   const startBtn = document.getElementById('startBtn');
+  const pauseLenInput = document.getElementById('pauseLen');
   const countdownEl = document.getElementById('countdown');
   const statusEl = document.getElementById('status');
 
@@ -143,20 +144,29 @@
     const mins = parseFloat(minutesInput.value) || 0;
     const secs = parseFloat(secondsInput.value) || 0;
     const flashSec = parseFloat(flashLenInput.value) || 0.6;
+    const pauseSec = parseFloat(pauseLenInput.value) || 0;
     const color = flashColorInput.value;
     const iv = Math.round((mins * 60 + secs) * 1000);
     const fd = Math.round(flashSec * 1000);
+    const pd = Math.round(pauseSec * 1000);
     if(iv <= 0) return;
-    const code = `(function(){clearInterval(window.__ft);clearTimeout(window.__ft_t);function f(){document.body.style.backgroundColor='${color}';clearTimeout(window.__ft_t);window.__ft_t=setTimeout(function(){document.body.style.backgroundColor='';},${fd});}f();window.__ft=setInterval(f,${iv});})();`;
-    const stopCode = `(function(){clearInterval(window.__ft);window.__ft=null;clearTimeout(window.__ft_t);window.__ft_t=null;document.body.style.backgroundColor='';})();`;
-    document.getElementById('bmLink').href = 'javascript:' + code;
-    document.getElementById('bmStopLink').href = 'javascript:' + stopCode;
+    const flashCode = `(function(){if(window.__ft){clearInterval(window.__ft);window.__ft=null;clearTimeout(window.__ft_t);window.__ft_t=null;document.body.style.backgroundColor='';}else{function f(){document.body.style.backgroundColor='${color}';clearTimeout(window.__ft_t);window.__ft_t=setTimeout(function(){document.body.style.backgroundColor='';},${fd});}f();window.__ft=setInterval(f,${iv});}})();`;
+    const videoCode = `(function(){if(window.__fv){clearInterval(window.__fv);window.__fv=null;}else{function g(){var v=document.querySelector('video');if(v&&!v.paused){v.pause();setTimeout(function(){v.play();},${pd});}}g();window.__fv=setInterval(g,${iv});}})();`;
+    document.getElementById('bmLink').href = 'javascript:' + flashCode;
+    document.getElementById('bmVideoLink').href = 'javascript:' + videoCode;
   }
-  [minutesInput, secondsInput, flashLenInput, flashColorInput].forEach(el=>{
+  [minutesInput, secondsInput, flashLenInput, flashColorInput, pauseLenInput].forEach(el=>{
     el.addEventListener('input', updateBookmarklet);
     el.addEventListener('change', updateBookmarklet);
   });
   updateBookmarklet();
+
+  document.getElementById('bmLink').addEventListener('click', function(){
+    this.textContent = window.__ft ? '⚡ 외부 점멸' : '■ 외부 점멸 중지';
+  });
+  document.getElementById('bmVideoLink').addEventListener('click', function(){
+    this.textContent = window.__fv ? '⏸ 외부 영상 멈춤' : '■ 영상멈춤 중지';
+  });
 
   // ---------- IndexedDB ----------
   function openDB(){
@@ -275,6 +285,7 @@
       minutes: minutesInput.value,
       seconds: secondsInput.value,
       flashLen: flashLenInput.value,
+      pauseLen: pauseLenInput.value,
       flashColor: flashColorInput.value,
       playLen: playLenInput.value,
       audioUrl: audioUrlInput.value,
@@ -291,6 +302,7 @@
       if(s.minutes !== undefined) minutesInput.value = s.minutes;
       if(s.seconds !== undefined) secondsInput.value = s.seconds;
       if(s.flashLen !== undefined) flashLenInput.value = s.flashLen;
+      if(s.pauseLen !== undefined) pauseLenInput.value = s.pauseLen;
       if(s.flashColor !== undefined) flashColorInput.value = s.flashColor;
       if(s.playLen !== undefined) playLenInput.value = s.playLen;
       if(s.audioUrl !== undefined) audioUrlInput.value = s.audioUrl;
@@ -385,7 +397,7 @@
       audioEl.pause();
       audioEl.currentTime = 0;
 
-      [minutesInput, secondsInput, flashLenInput, flashColorInput, playLenInput, audioFileInput, audioUrlInput, loadUrlBtn].forEach(el=> el.disabled = false);
+      [minutesInput, secondsInput, flashLenInput, pauseLenInput, flashColorInput, playLenInput, audioFileInput, audioUrlInput, loadUrlBtn].forEach(el=> el.disabled = false);
       startBtn.textContent = '시작';
       startBtn.classList.remove('running');
 
@@ -411,7 +423,7 @@
       countdownEl.textContent = formatTime(remainingMs);
       statusEl.textContent = '실행 중 — ' + mins + '분 ' + secs + '초마다 점멸';
 
-      [minutesInput, secondsInput, flashLenInput, flashColorInput, playLenInput, audioFileInput, audioUrlInput, loadUrlBtn].forEach(el=> el.disabled = true);
+      [minutesInput, secondsInput, flashLenInput, pauseLenInput, flashColorInput, playLenInput, audioFileInput, audioUrlInput, loadUrlBtn].forEach(el=> el.disabled = true);
       startBtn.textContent = '중지';
       startBtn.classList.add('running');
 
@@ -422,17 +434,18 @@
 
   // ---------- 페이지 로드시 복원 ----------
   const DEFAULT_URLS = [
-    'https://static.wikitide.net/bluearchivewiki/transcoded/6/6e/Nagisa_(Swimsuit)_Title.ogg/Nagisa_(Swimsuit)_Title.ogg.mp3',
-    'https://cdn.discordapp.com/attachments/354209999658024964/1523703081848537098/adf139f7715474dc.wav?ex=6a4d1293&is=6a4bc113&hm=543afdaafb509efc3a01f35b75d9afdc36e96175d59139a5aa54cc9db12b0fd7&',
-    'https://cdn.discordapp.com/attachments/354209999658024964/1523703082402451646/8c30a74023a17493.mp3?ex=6a4d1293&is=6a4bc113&hm=94823ca8b89d946473349d6a30059982f9a8a48d90061518465aee99e65a6314&'
+    'audio/Nagisa_(Swimsuit)_Title.ogg.mp3',
+    'audio/いますぐ輪廻.mp3',
+    'audio/ピンポンピンポン.wav'
   ];
+  const URL_VERSION = '3';
 
   (async function init(){
     loadSettings();
-    const list = loadUrlList();
-    let changed = false;
-    DEFAULT_URLS.forEach(url => { if(!list.includes(url)){ list.push(url); changed = true; } });
-    if(changed) saveUrlList(list);
+    if(localStorage.getItem('flashTimerUrlVersion') !== URL_VERSION){
+      saveUrlList([...DEFAULT_URLS]);
+      localStorage.setItem('flashTimerUrlVersion', URL_VERSION);
+    }
     renderUrlList();
     updateBookmarklet();
     try{
